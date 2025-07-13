@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thrones of Honor</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            overflow: hidden;
+            touch-action: none; /* Disable touch scroll */
+        }
+        #game-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
+</head>
+<body>
+    <div id="game-container"></div>
+    <script>
+        const config = {
+            type: Phaser.AUTO,
+            width: 800,
+            height: 600,
+            parent: 'game-container',
+            scene: {
+                preload: preload,
+                create: create,
+                update: update
+            },
+            scale: {
+                mode: Phaser.Scale.FIT,
+                autoCenter: Phaser.Scale.CENTER_BOTH
+            }
+        };
+
+        const game = new Phaser.Game(config);
+        let player, cursors, coins = 0, level = 1, dragonLocked = true, dragon;
+
+        function preload() {
+            // Placeholder art (replace with your assets)
+            this.load.image('background', 'https://labs.phaser.io/assets/skies/space3.png');
+            this.load.image('player', 'https://labs.phaser.io/assets/sprites/thrust_ship2.png');
+            this.load.image('dragon', 'https://labs.phaser.io/assets/sprites/dragonflame.png');
+            this.load.image('coin', 'https://labs.phaser.io/assets/sprites/goldcoin.png');
+        }
+
+        function create() {
+            // Background
+            this.add.image(400, 300, 'background');
+
+            // Player
+            player = this.physics.add.sprite(400, 300, 'player');
+            player.setCollideWorldBounds(true);
+
+            // Controls
+            cursors = this.input.keyboard.createCursorKeys();
+
+            // UI
+            const style = { font: '20px Arial', fill: '#ff0' };
+            this.levelText = this.add.text(20, 20, `Level: ${level}`, style);
+            this.coinText = this.add.text(20, 50, `Gold Coins: ${coins}`, style);
+            this.dragonText = this.add.text(20, 80, 'Dragon: LOCKED', style);
+
+            // Coin (for testing)
+            this.physics.add.group({
+                key: 'coin',
+                repeat: 5,
+                setXY: { x: Phaser.Math.Between(100, 700), y: Phaser.Math.Between(100, 500), stepX: 100 }
+            });
+
+            // Dragon unlock at Level 5
+            this.input.keyboard.on('keydown-U', () => {
+                if (level >= 5 && coins >= 350 && dragonLocked) {
+                    unlockDragon.call(this);
+                }
+            });
+
+            // Debug cheat
+            this.input.keyboard.on('keydown-C', () => {
+                coins += 100;
+                this.coinText.setText(`Gold Coins: ${coins}`);
+            });
+            this.input.keyboard.on('keydown-L', () => {
+                level++;
+                this.levelText.setText(`Level: ${level}`);
+            });
+        }
+
+        function unlockDragon() {
+            dragonLocked = false;
+            dragon = this.physics.add.sprite(player.x, player.y - 100, 'dragon');
+            this.dragonText.setText('Dragon: UNLOCKED!');
+            this.add.text(300, 200, 'DRAGON UNLEASHED!', { font: '32px Arial', fill: '#f00' });
+        }
+
+        function update() {
+            // Player movement
+            if (cursors.left.isDown) {
+                player.setVelocityX(-160);
+            } else if (cursors.right.isDown) {
+                player.setVelocityX(160);
+            } else {
+                player.setVelocityX(0);
+            }
+
+            if (cursors.up.isDown) {
+                player.setVelocityY(-160);
+            } else if (cursors.down.isDown) {
+                player.setVelocityY(160);
+            } else {
+                player.setVelocityY(0);
+            }
+
+            // Dragon follows player
+            if (dragon && !dragonLocked) {
+                Phaser.Math.Linear(dragon, player, 0.1);
+            }
+        }
+    </script>
+</body>
+</html>
