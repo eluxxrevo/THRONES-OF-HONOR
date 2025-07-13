@@ -5,52 +5,66 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Thrones of Honor</title>
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background: #000;
-            overflow: hidden;
-            touch-action: none; /* Disable touch scroll */
-        }
-        #game-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
+        body { margin: 0; padding: 0; background: #000; overflow: hidden; }
+        #game-container { display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .hidden { display: none !important; }
     </style>
+    <!-- Phaser -->
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
+    <!-- Firebase (Modular v9) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCrMnWwR3vTRSQMoid6j0d5NiO2jDdykgc",
+            authDomain: "thrones-of-honor.firebaseapp.com",
+            projectId: "thrones-of-honor",
+            storageBucket: "thrones-of-honor.appspot.com",
+            messagingSenderId: "124769370805",
+            appId: "1:124769370805:web:1f2c5a7102ad868cf834fc"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        window.firebase = { auth, db, GoogleAuthProvider, signInWithPopup, doc, setDoc, getDoc, updateDoc };
+    </script>
 </head>
 <body>
     <div id="game-container"></div>
+    <div id="login-screen" class="hidden">
+        <h1 style="color: gold; text-align: center;">THRONES OF HONOR</h1>
+        <button id="google-login" style="display: block; margin: 20px auto;">Login with Google</button>
+    </div>
+
     <script>
+        // Game config
         const config = {
             type: Phaser.AUTO,
             width: 800,
             height: 600,
             parent: 'game-container',
-            scene: {
-                preload: preload,
-                create: create,
-                update: update
-            },
-            scale: {
-                mode: Phaser.Scale.FIT,
-                autoCenter: Phaser.Scale.CENTER_BOTH
-            }
+            scene: { preload, create, update },
+            scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+            physics: { default: 'arcade', arcade: { gravity: { y: 0 } } }
         };
 
         const game = new Phaser.Game(config);
         let player, cursors, coins = 0, level = 1, dragonLocked = true, dragon;
+        let currentUserId = null;
 
+        // ==== PRELOAD ASSETS ====
         function preload() {
-            // Placeholder art (replace with your assets)
-            this.load.image('background', 'https://labs.phaser.io/assets/skies/space3.png');
-            this.load.image('player', 'https://labs.phaser.io/assets/sprites/thrust_ship2.png');
-            this.load.image('dragon', 'https://labs.phaser.io/assets/sprites/dragonflame.png');
-            this.load.image('coin', 'https://labs.phaser.io/assets/sprites/goldcoin.png');
+            this.load.image('background', 'assets/sky.png');
+            this.load.image('player', 'assets/knight.png');
+            this.load.image('dragon', 'assets/dragon.png');
+            this.load.image('coin', 'assets/gold_coin.png');
+            this.load.image('horse', 'assets/horse.png');
         }
 
+        // ==== CREATE GAME SCENE ====
         function create() {
             // Background
             this.add.image(400, 300, 'background');
@@ -63,64 +77,114 @@
             cursors = this.input.keyboard.createCursorKeys();
 
             // UI
-            const style = { font: '20px Arial', fill: '#ff0' };
-            this.levelText = this.add.text(20, 20, `Level: ${level}`, style);
-            this.coinText = this.add.text(20, 50, `Gold Coins: ${coins}`, style);
-            this.dragonText = this.add.text(20, 80, 'Dragon: LOCKED', style);
+            this.levelText = this.add.text(20, 20, `Level: ${level}`, { font: '20px Arial', fill: '#ff0' });
+            this.coinText = this.add.text(20, 50, `Gold Coins: ${coins}`, { font: '20px Arial', fill: '#ff0' });
+            this.dragonText = this.add.text(20, 80, 'Dragon: LOCKED', { font: '20px Arial', fill: '#f00' });
 
-            // Coin (for testing)
-            this.physics.add.group({
-                key: 'coin',
-                repeat: 5,
-                setXY: { x: Phaser.Math.Between(100, 700), y: Phaser.Math.Between(100, 500), stepX: 100 }
-            });
-
-            // Dragon unlock at Level 5
-            this.input.keyboard.on('keydown-U', () => {
-                if (level >= 5 && coins >= 350 && dragonLocked) {
-                    unlockDragon.call(this);
+            // Login UI
+            document.getElementById('google-login').addEventListener('click', async () => {
+                const provider = new firebase.GoogleAuthProvider();
+                try {
+                    const userCredential = await firebase.signInWithPopup(firebase.auth, provider);
+                    currentUserId = userCredential.user.uid;
+                    document.getElementById('login-screen').classList.add('hidden');
+                    await loadGameProgress(currentUserId);
+                } catch (error) {
+                    console.error("Login failed:", error);
                 }
             });
 
-            // Debug cheat
-            this.input.keyboard.on('keydown-C', () => {
-                coins += 100;
-                this.coinText.setText(`Gold Coins: ${coins}`);
+            // Shop Button
+            const shopBtn = this.add.text(700, 20, 'SHOP', { font: '20px Arial', fill: '#0f0' })
+                .setInteractive()
+                .on('pointerdown', () => createShop.call(this));
+        }
+
+        // ==== SHOP SCENE ====
+        function createShop() {
+            // Clear previous UI
+            this.children.each(child => { if (child.type === 'Text') child.destroy(); });
+
+            // OPay Payment (Nigeria)
+            this.add.text(300, 200, 'BUY 50 GOLD COINS', { font: '24px Arial', fill: '#ff0' });
+            const opayBtn = this.add.text(300, 250, 'Pay ₦5,000 via OPay: 8038684515', { 
+                font: '18px Arial', fill: '#fff', backgroundColor: '#006600', padding: 10 
+            }).setInteractive();
+            opayBtn.on('pointerdown', () => {
+                this.add.text(300, 300, 'Send proof to @ThronesSupport after payment!', { font: '16px Arial', fill: '#0f0' });
             });
-            this.input.keyboard.on('keydown-L', () => {
-                level++;
-                this.levelText.setText(`Level: ${level}`);
+
+            // USDT Payment (International)
+            const usdtBtn = this.add.text(300, 350, 'Pay 10 USDT (ERC-20): 0x921...7685', { 
+                font: '18px Arial', fill: '#fff', backgroundColor: '#333', padding: 10 
+            }).setInteractive();
+            usdtBtn.on('pointerdown', () => {
+                this.add.text(300, 400, 'Send TX hash to @ThronesSupport!', { font: '16px Arial', fill: '#0f0' });
+            });
+
+            // Back Button
+            const backBtn = this.add.text(50, 550, 'BACK', { font: '20px Arial', fill: '#f00' })
+                .setInteractive()
+                .on('pointerdown', () => this.scene.restart());
+        }
+
+        // ==== GAME FUNCTIONS ====
+        async function loadGameProgress(userId) {
+            const docSnap = await firebase.getDoc(firebase.doc(firebase.db, "players", userId));
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                coins = data.coins || 0;
+                level = data.level || 1;
+                dragonLocked = data.dragonLocked !== false;
+                updateUI();
+            }
+        }
+
+        async function saveGameProgress() {
+            if (!currentUserId) return;
+            await firebase.setDoc(firebase.doc(firebase.db, "players", currentUserId), {
+                coins, level, dragonLocked
             });
         }
 
         function unlockDragon() {
-            dragonLocked = false;
-            dragon = this.physics.add.sprite(player.x, player.y - 100, 'dragon');
-            this.dragonText.setText('Dragon: UNLOCKED!');
-            this.add.text(300, 200, 'DRAGON UNLEASHED!', { font: '32px Arial', fill: '#f00' });
+            if (level >= 5 && coins >= 350 && dragonLocked) {
+                dragonLocked = false;
+                dragon = this.physics.add.sprite(player.x, player.y - 100, 'dragon');
+                this.dragonText.setText('Dragon: UNLOCKED!');
+                saveGameProgress();
+            }
         }
 
-        function update() {
-            // Player movement
-            if (cursors.left.isDown) {
-                player.setVelocityX(-160);
-            } else if (cursors.right.isDown) {
-                player.setVelocityX(160);
-            } else {
-                player.setVelocityX(0);
-            }
+        function updateUI() {
+            this.levelText.setText(`Level: ${level}`);
+            this.coinText.setText(`Gold Coins: ${coins}`);
+            this.dragonText.setText(dragonLocked ? 'Dragon: LOCKED' : 'Dragon: UNLOCKED!');
+        }
 
-            if (cursors.up.isDown) {
-                player.setVelocityY(-160);
-            } else if (cursors.down.isDown) {
-                player.setVelocityY(160);
-            } else {
-                player.setVelocityY(0);
-            }
+        // ==== UPDATE LOOP ====
+        function update() {
+            // Movement
+            if (cursors.left.isDown) player.setVelocityX(-160);
+            else if (cursors.right.isDown) player.setVelocityX(160);
+            else player.setVelocityX(0);
+
+            if (cursors.up.isDown) player.setVelocityY(-160);
+            else if (cursors.down.isDown) player.setVelocityY(160);
+            else player.setVelocityY(0);
 
             // Dragon follows player
             if (dragon && !dragonLocked) {
                 Phaser.Math.Linear(dragon, player, 0.1);
+            }
+
+            // Debug Cheats
+            if (cursors.space.isDown) {
+                coins += 10;
+                updateUI.call(this);
+            }
+            if (Phaser.Input.Keyboard.JustDown(this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.U)) {
+                unlockDragon.call(this);
             }
         }
     </script>
