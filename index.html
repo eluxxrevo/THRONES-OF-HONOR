@@ -1,192 +1,270 @@
+<!-- Thrones of Honor - FULL HTML GAME (Part 1 of 2) -->
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thrones of Honor</title>
-    <style>
-        body { margin: 0; padding: 0; background: #000; overflow: hidden; }
-        #game-container { display: flex; justify-content: center; align-items: center; height: 100vh; }
-        .hidden { display: none !important; }
-    </style>
-    <!-- Phaser -->
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
-    <!-- Firebase (Modular v9) -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyCrMnWwR3vTRSQMoid6j0d5NiO2jDdykgc",
-            authDomain: "thrones-of-honor.firebaseapp.com",
-            projectId: "thrones-of-honor",
-            storageBucket: "thrones-of-honor.appspot.com",
-            messagingSenderId: "124769370805",
-            appId: "1:124769370805:web:1f2c5a7102ad868cf834fc"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        window.firebase = { auth, db, GoogleAuthProvider, signInWithPopup, doc, setDoc, getDoc, updateDoc };
-    </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Thrones of Honor</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: Georgia, serif;
+      background: #000;
+    }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+    #entryScreen, #settingsScreen {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background: url('https://i.ibb.co/QYbWbKc/thrones-bg.jpg') no-repeat center center/cover;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    h1 { color: gold; text-shadow: 0 0 10px black; }
+    button, input {
+      padding: 12px 18px;
+      font-size: 16px;
+      margin: 10px;
+      border-radius: 8px;
+      border: none;
+    }
+    #hud {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(0,0,0,0.6);
+      color: white;
+      padding: 10px;
+      border-radius: 10px;
+      z-index: 20;
+    }
+    #realmMap {
+      display: none;
+      position: absolute;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background: url('https://i.ibb.co/ZmM35hD/kingdom-map.jpg') no-repeat center center/cover;
+      z-index: 900;
+    }
+    .realm {
+      position: absolute;
+      width: 120px;
+      height: 120px;
+      background: rgba(0,0,0,0.5);
+      color: gold;
+      text-align: center;
+      line-height: 120px;
+      font-weight: bold;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid gold;
+    }
+    #missionBox {
+      position: absolute;
+      top: 10%; left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.9);
+      color: white;
+      padding: 20px;
+      width: 80vw;
+      max-width: 400px;
+      display: none;
+      z-index: 999;
+      border: 2px solid gold;
+      border-radius: 15px;
+    }
+  </style>
 </head>
 <body>
-    <div id="game-container"></div>
-    <div id="login-screen" class="hidden">
-        <h1 style="color: gold; text-align: center;">THRONES OF HONOR</h1>
-        <button id="google-login" style="display: block; margin: 20px auto;">Login with Google</button>
-    </div>
+  <div id="entryScreen">
+    <h1>Thrones of Honor</h1>
+    <button onclick="startGame()">Enter Realm</button>
+    <button onclick="openSettings()">Settings</button>
+  </div>
 
-    <script>
-        // Game config
-        const config = {
-            type: Phaser.AUTO,
-            width: 800,
-            height: 600,
-            parent: 'game-container',
-            scene: { preload, create, update },
-            scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-            physics: { default: 'arcade', arcade: { gravity: { y: 0 } } }
-        };
+  <div id="settingsScreen" style="display:none">
+    <h1>Customize Your Hero</h1>
+    <input type="text" id="usernameInput" placeholder="Enter new username" />
+    <button onclick="saveSettings()">Save</button>
+    <button onclick="closeSettings()">Back</button>
+  </div>
 
-        const game = new Phaser.Game(config);
-        let player, cursors, coins = 0, level = 1, dragonLocked = true, dragon;
-        let currentUserId = null;
+  <canvas id="gameCanvas"></canvas>
+  <div id="hud">Loading...</div>
 
-        // ==== PRELOAD ASSETS ====
-        function preload() {
-            this.load.image('background', 'assets/sky.png');
-            this.load.image('player', 'assets/knight.png');
-            this.load.image('dragon', 'assets/dragon.png');
-            this.load.image('coin', 'assets/gold_coin.png');
-            this.load.image('horse', 'assets/horse.png');
-        }
+  <div id="realmMap">
+    <div class="realm" style="top:10%;left:15%;" onclick="openMissions('North Watch')">North</div>
+    <div class="realm" style="top:35%;left:50%;" onclick="openMissions('Emberfall')">Ember</div>
+    <div class="realm" style="top:60%;left:20%;" onclick="openMissions('Seadrift')">Sea</div>
+    <div class="realm" style="top:70%;left:70%;" onclick="openMissions('Stonehelm')">Stone</div>
+  </div>
 
-        // ==== CREATE GAME SCENE ====
-        function create() {
-            // Background
-            this.add.image(400, 300, 'background');
+  <div id="missionBox">
+    <h2 id="missionTitle">Missions</h2>
+    <div id="missionList"></div>
+    <button onclick="closeMissions()">Close</button>
+  </div>
 
-            // Player
-            player = this.physics.add.sprite(400, 300, 'player');
-            player.setCollideWorldBounds(true);
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-app.js";
+import { getFirestore, doc, getDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-firestore.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-auth.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-functions.js";
 
-            // Controls
-            cursors = this.input.keyboard.createCursorKeys();
+const firebaseConfig = {
+  apiKey: "AIzaSyCrMnWwR3vTRSQMoid6j0d5NiO2jDdykgc",
+  authDomain: "thrones-of-honor.firebaseapp.com",
+  projectId: "thrones-of-honor",
+  storageBucket: "thrones-of-honor.firebasestorage.app",
+  messagingSenderId: "124769370805",
+  appId: "1:124769370805:web:1f2c5a7102ad868cf834fc",
+  measurementId: "G-YD700YJJ3Y"
+};
 
-            // UI
-            this.levelText = this.add.text(20, 20, `Level: ${level}`, { font: '20px Arial', fill: '#ff0' });
-            this.coinText = this.add.text(20, 50, `Gold Coins: ${coins}`, { font: '20px Arial', fill: '#ff0' });
-            this.dragonText = this.add.text(20, 80, 'Dragon: LOCKED', { font: '20px Arial', fill: '#f00' });
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth();
+const functions = getFunctions(app);
 
-            // Login UI
-            document.getElementById('google-login').addEventListener('click', async () => {
-                const provider = new firebase.GoogleAuthProvider();
-                try {
-                    const userCredential = await firebase.signInWithPopup(firebase.auth, provider);
-                    currentUserId = userCredential.user.uid;
-                    document.getElementById('login-screen').classList.add('hidden');
-                    await loadGameProgress(currentUserId);
-                } catch (error) {
-                    console.error("Login failed:", error);
-                }
-            });
+let uid = null;
+let playerData = {
+  gold: 0,
+  silver: 0,
+  level: 1,
+  fire: 0,
+  username: "Hero",
+  inventory: []
+};
 
-            // Shop Button
-            const shopBtn = this.add.text(700, 20, 'SHOP', { font: '20px Arial', fill: '#0f0' })
-                .setInteractive()
-                .on('pointerdown', () => createShop.call(this));
-        }
+signInAnonymously(auth);
+onAuthStateChanged(auth, async user => {
+  if (user) {
+    uid = user.uid;
+    const ref = doc(db, "users", uid);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) {
+      await updateDoc(ref, {
+        gold: 0, silver: 0, level: 1, fire: 0, inventory: [], username: "Hero"
+      }).catch(() => {}); // if doc doesn't exist yet
+    } else {
+      playerData = { ...playerData, ...snap.data() };
+    }
+    updateHUD();
+  }
+});
 
-        // ==== SHOP SCENE ====
-        function createShop() {
-            // Clear previous UI
-            this.children.each(child => { if (child.type === 'Text') child.destroy(); });
+function updateHUD() {
+  const hud = document.getElementById("hud");
+  hud.innerHTML = `👤 ${playerData.username}<br>🏅 Level ${playerData.level}<br>💰 ${playerData.gold}G | 🪙 ${playerData.silver}S<br>🔥 Fire: ${playerData.fire}`;
+}
 
-            // OPay Payment (Nigeria)
-            this.add.text(300, 200, 'BUY 50 GOLD COINS', { font: '24px Arial', fill: '#ff0' });
-            const opayBtn = this.add.text(300, 250, 'Pay ₦5,000 via OPay: 8038684515', { 
-                font: '18px Arial', fill: '#fff', backgroundColor: '#006600', padding: 10 
-            }).setInteractive();
-            opayBtn.on('pointerdown', () => {
-                this.add.text(300, 300, 'Send proof to @ThronesSupport after payment!', { font: '16px Arial', fill: '#0f0' });
-            });
+function startGame() {
+  document.getElementById("entryScreen").style.display = "none";
+  document.getElementById("gameCanvas").focus();
+}
 
-            // USDT Payment (International)
-            const usdtBtn = this.add.text(300, 350, 'Pay 10 USDT (ERC-20): 0x921...7685', { 
-                font: '18px Arial', fill: '#fff', backgroundColor: '#333', padding: 10 
-            }).setInteractive();
-            usdtBtn.on('pointerdown', () => {
-                this.add.text(300, 400, 'Send TX hash to @ThronesSupport!', { font: '16px Arial', fill: '#0f0' });
-            });
+function openSettings() {
+  document.getElementById("entryScreen").style.display = "none";
+  document.getElementById("settingsScreen").style.display = "flex";
+  document.getElementById("usernameInput").value = playerData.username;
+}
 
-            // Back Button
-            const backBtn = this.add.text(50, 550, 'BACK', { font: '20px Arial', fill: '#f00' })
-                .setInteractive()
-                .on('pointerdown', () => this.scene.restart());
-        }
+function saveSettings() {
+  const newName = document.getElementById("usernameInput").value.trim();
+  if (newName && uid) {
+    updateDoc(doc(db, "users", uid), { username: newName });
+    playerData.username = newName;
+    updateHUD();
+    closeSettings();
+  }
+}
 
-        // ==== GAME FUNCTIONS ====
-        async function loadGameProgress(userId) {
-            const docSnap = await firebase.getDoc(firebase.doc(firebase.db, "players", userId));
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                coins = data.coins || 0;
-                level = data.level || 1;
-                dragonLocked = data.dragonLocked !== false;
-                updateUI();
-            }
-        }
+function closeSettings() {
+  document.getElementById("settingsScreen").style.display = "none";
+  document.getElementById("entryScreen").style.display = "flex";
+}
 
-        async function saveGameProgress() {
-            if (!currentUserId) return;
-            await firebase.setDoc(firebase.doc(firebase.db, "players", currentUserId), {
-                coins, level, dragonLocked
-            });
-        }
+const missionSet = {
+  "North Watch": [{ title: "Scout frozen pass", effort: 30 }, { title: "Slay ice beast", effort: 60 }],
+  "Emberfall": [{ title: "Conquer lava gate", effort: 40 }, { title: "Burn enemy troops", effort: 70 }],
+  "Seadrift": [{ title: "Board pirate ship", effort: 50 }, { title: "Rescue sea king", effort: 80 }],
+  "Stonehelm": [{ title: "Fight stone warriors", effort: 60 }, { title: "Climb high cave", effort: 90 }]
+};
 
-        function unlockDragon() {
-            if (level >= 5 && coins >= 350 && dragonLocked) {
-                dragonLocked = false;
-                dragon = this.physics.add.sprite(player.x, player.y - 100, 'dragon');
-                this.dragonText.setText('Dragon: UNLOCKED!');
-                saveGameProgress();
-            }
-        }
+function openMissions(realm) {
+  const box = document.getElementById("missionBox");
+  document.getElementById("missionTitle").innerText = realm + " Missions";
+  const list = document.getElementById("missionList");
+  list.innerHTML = "";
+  missionSet[realm].forEach(m => {
+    const btn = document.createElement("button");
+    btn.innerText = `Do: ${m.title} (Effort ${m.effort})`;
+    btn.onclick = () => completeMission(m.title, m.effort);
+    list.appendChild(btn);
+  });
+  box.style.display = "block";
+}
 
-        function updateUI() {
-            this.levelText.setText(`Level: ${level}`);
-            this.coinText.setText(`Gold Coins: ${coins}`);
-            this.dragonText.setText(dragonLocked ? 'Dragon: LOCKED' : 'Dragon: UNLOCKED!');
-        }
+function closeMissions() {
+  document.getElementById("missionBox").style.display = "none";
+}
 
-        // ==== UPDATE LOOP ====
-        function update() {
-            // Movement
-            if (cursors.left.isDown) player.setVelocityX(-160);
-            else if (cursors.right.isDown) player.setVelocityX(160);
-            else player.setVelocityX(0);
+async function completeMission(title, effort) {
+  const rewardSilver = 10;
+  const rewardGold = effort >= 50 ? 13 : 0;
+  playerData.silver += rewardSilver;
+  playerData.gold += rewardGold;
+  playerData.level += 1;
+  updateHUD();
+  await updateDoc(doc(db, "users", uid), {
+    silver: playerData.silver,
+    gold: playerData.gold,
+    level: playerData.level
+  });
+  alert(`✅ Mission Complete: ${title}\n+${rewardSilver} Silver\n+${rewardGold} Gold`);
+  closeMissions();
+}
 
-            if (cursors.up.isDown) player.setVelocityY(-160);
-            else if (cursors.down.isDown) player.setVelocityY(160);
-            else player.setVelocityY(0);
+// Example item purchase function
+async function buyItem(itemName, costGold) {
+  if (playerData.gold < costGold) return alert("Not enough gold!");
+  playerData.gold -= costGold;
+  playerData.inventory.push(itemName);
+  await updateDoc(doc(db, "users", uid), {
+    gold: playerData.gold,
+    inventory: arrayUnion(itemName)
+  });
+  alert(`🎁 You received ${itemName}`);
+  updateHUD();
+}
 
-            // Dragon follows player
-            if (dragon && !dragonLocked) {
-                Phaser.Math.Linear(dragon, player, 0.1);
-            }
+// Fire refill
+async function buyFire(amount = 10, costUSD = 1) {
+  playerData.fire += amount;
+  await updateDoc(doc(db, "users", uid), { fire: playerData.fire });
+  updateHUD();
+  alert(`🔥 Purchased ${amount} fire!`);
+}
 
-            // Debug Cheats
-            if (cursors.space.isDown) {
-                coins += 10;
-                updateUI.call(this);
-            }
-            if (Phaser.Input.Keyboard.JustDown(this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.U)) {
-                unlockDragon.call(this);
-            }
-        }
-    </script>
+window.startGame = startGame;
+window.openSettings = openSettings;
+window.saveSettings = saveSettings;
+window.closeSettings = closeSettings;
+window.openMissions = openMissions;
+window.closeMissions = closeMissions;
+window.completeMission = completeMission;
+window.buyItem = buyItem;
+window.buyFire = buyFire;
+</script>
+
 </body>
 </html>
