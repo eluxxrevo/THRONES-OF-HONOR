@@ -1,124 +1,98 @@
-<!-- Thrones of Honor - FULL HTML GAME (Part 1 of 2) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta charset="UTF-8">
   <title>Thrones of Honor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <style>
-    html, body {
+    body {
       margin: 0;
-      padding: 0;
-      overflow: hidden;
       font-family: Georgia, serif;
       background: #000;
-    }
-    canvas {
-      display: block;
-      width: 100vw;
-      height: 100vh;
-    }
-    #entryScreen, #settingsScreen {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100vw; height: 100vh;
-      background: url('https://i.ibb.co/QYbWbKc/thrones-bg.jpg') no-repeat center center/cover;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-    }
-    h1 { color: gold; text-shadow: 0 0 10px black; }
-    button, input {
-      padding: 12px 18px;
-      font-size: 16px;
-      margin: 10px;
-      border-radius: 8px;
-      border: none;
-    }
-    #hud {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      background: rgba(0,0,0,0.6);
-      color: white;
-      padding: 10px;
-      border-radius: 10px;
-      z-index: 20;
-    }
-    #realmMap {
-      display: none;
-      position: absolute;
-      top: 0; left: 0;
-      width: 100vw; height: 100vh;
-      background: url('https://i.ibb.co/ZmM35hD/kingdom-map.jpg') no-repeat center center/cover;
-      z-index: 900;
-    }
-    .realm {
-      position: absolute;
-      width: 120px;
-      height: 120px;
-      background: rgba(0,0,0,0.5);
       color: gold;
       text-align: center;
-      line-height: 120px;
-      font-weight: bold;
-      border-radius: 50%;
-      cursor: pointer;
-      border: 2px solid gold;
     }
-    #missionBox {
-      position: absolute;
-      top: 10%; left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.9);
-      color: white;
-      padding: 20px;
-      width: 80vw;
-      max-width: 400px;
-      display: none;
-      z-index: 999;
+    #hud {
+      background: rgba(0, 0, 0, 0.8);
+      padding: 10px;
+      position: fixed;
+      top: 0;
+      width: 100%;
+      font-size: 16px;
+      z-index: 1000;
+    }
+    h2 { margin-top: 60px; }
+    button, input {
+      padding: 10px 20px;
+      margin: 5px;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+    }
+    input {
+      width: 60%;
+    }
+    #missionBox, #shopBox, #inventoryBox, #giftBox, #leaderboardBox {
+      margin-top: 20px;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      width: 90%;
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    canvas {
+      margin-top: 30px;
       border: 2px solid gold;
-      border-radius: 15px;
+      background: #111;
     }
   </style>
 </head>
 <body>
-  <div id="entryScreen">
-    <h1>Thrones of Honor</h1>
-    <button onclick="startGame()">Enter Realm</button>
-    <button onclick="openSettings()">Settings</button>
-  </div>
 
-  <div id="settingsScreen" style="display:none">
-    <h1>Customize Your Hero</h1>
-    <input type="text" id="usernameInput" placeholder="Enter new username" />
-    <button onclick="saveSettings()">Save</button>
-    <button onclick="closeSettings()">Back</button>
-  </div>
-
-  <canvas id="gameCanvas"></canvas>
   <div id="hud">Loading...</div>
 
-  <div id="realmMap">
-    <div class="realm" style="top:10%;left:15%;" onclick="openMissions('North Watch')">North</div>
-    <div class="realm" style="top:35%;left:50%;" onclick="openMissions('Emberfall')">Ember</div>
-    <div class="realm" style="top:60%;left:20%;" onclick="openMissions('Seadrift')">Sea</div>
-    <div class="realm" style="top:70%;left:70%;" onclick="openMissions('Stonehelm')">Stone</div>
-  </div>
-
   <div id="missionBox">
-    <h2 id="missionTitle">Missions</h2>
-    <div id="missionList"></div>
-    <button onclick="closeMissions()">Close</button>
+    <h2>🔥 North Watch Missions</h2>
+    <button onclick="completeMission('Scout Ice Trail', 30)">Scout Ice Trail</button>
+    <button onclick="completeMission('Slay Ice Beast', 60)">Slay Ice Beast</button>
   </div>
 
-<script type="module">
+  <div id="shopBox">
+    <h2>🛒 Shop</h2>
+    <button onclick="buyItem('Sword of Valor', 50)">Buy Sword (50 Gold)</button>
+    <button onclick="buyItem('Shield of Flame', 60)">Buy Shield (60 Gold)</button>
+    <button onclick="buyItem('Crown', 100)">Buy Crown (100 Gold)</button>
+    <button onclick="buyItem('Dragon', 350)">Unlock Dragon (350 Gold or Level 5)</button>
+    <button onclick="buyFire(10)">Buy 10 Fire (10 Gold)</button>
+  </div>
+
+  <div id="inventoryBox">
+    <h2>🎒 Inventory</h2>
+    <ul id="inventoryList">Loading...</ul>
+  </div>
+
+  <div id="giftBox">
+    <h2>🎁 Redeem Gift Code</h2>
+    <input type="text" id="giftCodeInput" placeholder="Enter gift code">
+    <button onclick="redeemGiftCode()">Redeem</button>
+    <p id="giftMessage"></p>
+  </div>
+
+  <div id="leaderboardBox">
+    <h2>🏆 Leaderboard</h2>
+    <ol id="leaderList">Loading...</ol>
+  </div>
+
+  <canvas id="gameMap" width="300" height="300"></canvas> <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-app.js";
-import { getFirestore, doc, getDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-firestore.js";
-import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-auth.js";
-import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-functions.js";
+import {
+  getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion
+} from "https://www.gstatic.com/firebasejs/10.5.2/firebase-firestore.js";
+import {
+  getAuth, signInAnonymously, onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.5.2/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCrMnWwR3vTRSQMoid6j0d5NiO2jDdykgc",
@@ -126,145 +100,183 @@ const firebaseConfig = {
   projectId: "thrones-of-honor",
   storageBucket: "thrones-of-honor.firebasestorage.app",
   messagingSenderId: "124769370805",
-  appId: "1:124769370805:web:1f2c5a7102ad868cf834fc",
-  measurementId: "G-YD700YJJ3Y"
+  appId: "1:124769370805:web:1f2c5a7102ad868cf834fc"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth();
-const functions = getFunctions(app);
 
 let uid = null;
-let playerData = {
-  gold: 0,
-  silver: 0,
-  level: 1,
-  fire: 0,
-  username: "Hero",
-  inventory: []
-};
+let player = { username: "Hero", gold: 0, level: 1, fire: 0, inventory: [] };
 
 signInAnonymously(auth);
 onAuthStateChanged(auth, async user => {
   if (user) {
     uid = user.uid;
-    const ref = doc(db, "users", uid);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) {
-      await updateDoc(ref, {
-        gold: 0, silver: 0, level: 1, fire: 0, inventory: [], username: "Hero"
-      }).catch(() => {}); // if doc doesn't exist yet
+    const userRef = doc(db, "users", uid);
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists()) {
+      await setDoc(userRef, player);
     } else {
-      playerData = { ...playerData, ...snap.data() };
+      player = userSnap.data();
     }
     updateHUD();
+    loadInventory();
+    loadLeaderboard();
   }
 });
 
 function updateHUD() {
-  const hud = document.getElementById("hud");
-  hud.innerHTML = `👤 ${playerData.username}<br>🏅 Level ${playerData.level}<br>💰 ${playerData.gold}G | 🪙 ${playerData.silver}S<br>🔥 Fire: ${playerData.fire}`;
-}
-
-function startGame() {
-  document.getElementById("entryScreen").style.display = "none";
-  document.getElementById("gameCanvas").focus();
-}
-
-function openSettings() {
-  document.getElementById("entryScreen").style.display = "none";
-  document.getElementById("settingsScreen").style.display = "flex";
-  document.getElementById("usernameInput").value = playerData.username;
-}
-
-function saveSettings() {
-  const newName = document.getElementById("usernameInput").value.trim();
-  if (newName && uid) {
-    updateDoc(doc(db, "users", uid), { username: newName });
-    playerData.username = newName;
-    updateHUD();
-    closeSettings();
-  }
-}
-
-function closeSettings() {
-  document.getElementById("settingsScreen").style.display = "none";
-  document.getElementById("entryScreen").style.display = "flex";
-}
-
-const missionSet = {
-  "North Watch": [{ title: "Scout frozen pass", effort: 30 }, { title: "Slay ice beast", effort: 60 }],
-  "Emberfall": [{ title: "Conquer lava gate", effort: 40 }, { title: "Burn enemy troops", effort: 70 }],
-  "Seadrift": [{ title: "Board pirate ship", effort: 50 }, { title: "Rescue sea king", effort: 80 }],
-  "Stonehelm": [{ title: "Fight stone warriors", effort: 60 }, { title: "Climb high cave", effort: 90 }]
-};
-
-function openMissions(realm) {
-  const box = document.getElementById("missionBox");
-  document.getElementById("missionTitle").innerText = realm + " Missions";
-  const list = document.getElementById("missionList");
-  list.innerHTML = "";
-  missionSet[realm].forEach(m => {
-    const btn = document.createElement("button");
-    btn.innerText = `Do: ${m.title} (Effort ${m.effort})`;
-    btn.onclick = () => completeMission(m.title, m.effort);
-    list.appendChild(btn);
-  });
-  box.style.display = "block";
-}
-
-function closeMissions() {
-  document.getElementById("missionBox").style.display = "none";
+  document.getElementById("hud").innerText =
+    `👤 ${player.username} | 🏆 Level ${player.level} | 💰 ${player.gold} Gold | 🔥 Fire: ${player.fire}`;
 }
 
 async function completeMission(title, effort) {
-  const rewardSilver = 10;
-  const rewardGold = effort >= 50 ? 13 : 0;
-  playerData.silver += rewardSilver;
-  playerData.gold += rewardGold;
-  playerData.level += 1;
-  updateHUD();
+  const rewardGold = effort >= 50 ? 13 : 5;
+  player.gold += rewardGold;
+  player.level += 1;
   await updateDoc(doc(db, "users", uid), {
-    silver: playerData.silver,
-    gold: playerData.gold,
-    level: playerData.level
+    gold: player.gold,
+    level: player.level
   });
-  alert(`✅ Mission Complete: ${title}\n+${rewardSilver} Silver\n+${rewardGold} Gold`);
-  closeMissions();
+  alert(`✅ Completed: ${title}\n+${rewardGold} gold`);
+  updateHUD();
+  loadLeaderboard();
 }
 
-// Example item purchase function
-async function buyItem(itemName, costGold) {
-  if (playerData.gold < costGold) return alert("Not enough gold!");
-  playerData.gold -= costGold;
-  playerData.inventory.push(itemName);
+async function buyItem(itemName, cost) {
+  if (itemName === "Dragon") {
+    if (player.inventory.includes("Dragon")) {
+      return alert("🐉 Dragon already unlocked.");
+    }
+    if (player.level >= 5 || player.gold >= cost) {
+      if (player.gold >= cost) player.gold -= cost;
+      player.inventory.push("Dragon");
+      player.fire = 10;
+      await updateDoc(doc(db, "users", uid), {
+        gold: player.gold,
+        inventory: arrayUnion("Dragon"),
+        fire: player.fire
+      });
+      updateHUD();
+      loadInventory();
+      return alert("🐉 Dragon unlocked! You now have 10 fire.");
+    } else {
+      return alert("❌ Reach level 5 or have 350 gold to unlock dragon.");
+    }
+  }
+
+  if (player.gold < cost) return alert("❌ Not enough gold.");
+  player.gold -= cost;
+  player.inventory.push(itemName);
   await updateDoc(doc(db, "users", uid), {
-    gold: playerData.gold,
+    gold: player.gold,
     inventory: arrayUnion(itemName)
   });
-  alert(`🎁 You received ${itemName}`);
+  alert(`✅ Bought ${itemName}`);
+  updateHUD();
+  loadInventory();
+}
+
+async function buyFire(amount = 10) {
+  const cost = 10;
+  if (player.gold < cost) return alert("❌ Not enough gold.");
+  player.gold -= cost;
+  player.fire += amount;
+  await updateDoc(doc(db, "users", uid), {
+    gold: player.gold,
+    fire: player.fire
+  });
+  alert(`🔥 Bought ${amount} fire`);
   updateHUD();
 }
 
-// Fire refill
-async function buyFire(amount = 10, costUSD = 1) {
-  playerData.fire += amount;
-  await updateDoc(doc(db, "users", uid), { fire: playerData.fire });
-  updateHUD();
-  alert(`🔥 Purchased ${amount} fire!`);
+async function loadInventory() {
+  const ref = doc(db, "users", uid);
+  const snap = await getDoc(ref);
+  const list = document.getElementById("inventoryList");
+  list.innerHTML = "";
+  if (snap.exists()) {
+    (snap.data().inventory || []).forEach(item => {
+      const li = document.createElement("li");
+      li.innerText = item;
+      list.appendChild(li);
+    });
+  }
 }
 
-window.startGame = startGame;
-window.openSettings = openSettings;
-window.saveSettings = saveSettings;
-window.closeSettings = closeSettings;
-window.openMissions = openMissions;
-window.closeMissions = closeMissions;
-window.completeMission = completeMission;
-window.buyItem = buyItem;
-window.buyFire = buyFire;
+async function redeemGiftCode() {
+  const code = document.getElementById("giftCodeInput").value.trim().toUpperCase();
+  if (!code) return;
+
+  const giftRef = doc(db, "giftcodes", code);
+  const snap = await getDoc(giftRef);
+  const msg = document.getElementById("giftMessage");
+
+  if (!snap.exists()) return msg.innerText = "❌ Invalid code.";
+  const used = snap.data().usedBy || [];
+  if (used.includes(uid)) return msg.innerText = "❌ Already redeemed.";
+
+  const bonus = snap.data().gold || 20;
+  player.gold += bonus;
+  await updateDoc(doc(db, "users", uid), { gold: player.gold });
+  await updateDoc(giftRef, { usedBy: arrayUnion(uid) });
+  msg.innerText = `✅ +${bonus} gold!`;
+  updateHUD();
+}
+
+async function loadLeaderboard() {
+  const userSnap = await getDoc(doc(db, "users", uid));
+  const ref = doc(db, "leaderboard", "top");
+  let top = [];
+
+  if (userSnap.exists()) {
+    const userEntry = {
+      username: userSnap.data().username || "Hero",
+      gold: userSnap.data().gold || 0,
+      level: userSnap.data().level || 1
+    };
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      top = snap.data().users || [];
+      top.push(userEntry);
+      top = top.sort((a, b) => b.gold - a.gold).slice(0, 5);
+    } else {
+      top = [userEntry];
+    }
+    await setDoc(ref, { users: top });
+  }
+
+  const list = document.getElementById("leaderList");
+  list.innerHTML = "";
+  top.forEach(u => {
+    const li = document.createElement("li");
+    li.innerText = `${u.username} - ${u.gold}G - Level ${u.level}`;
+    list.appendChild(li);
+  });
+}
+
+// canvas movement
+const canvas = document.getElementById("gameMap");
+const ctx = canvas.getContext("2d");
+let x = 150, y = 150;
+
+function drawMap() {
+  ctx.fillStyle = "#222";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#0055aa"; ctx.fillRect(200, 200, 60, 60); // ocean
+  ctx.fillStyle = "#555"; ctx.fillRect(50, 50, 40, 40); // mountain
+  ctx.fillStyle = "gold"; ctx.beginPath(); ctx.arc(x, y, 10, 0, Math.PI * 2); ctx.fill();
+}
+function movePlayer(dx, dy) { x += dx; y += dy; drawMap(); }
+window.addEventListener("keydown", e => {
+  if (e.key === "ArrowUp") movePlayer(0, -10);
+  else if (e.key === "ArrowDown") movePlayer(0, 10);
+  else if (e.key === "ArrowLeft") movePlayer(-10, 0);
+  else if (e.key === "ArrowRight") movePlayer(10, 0);
+});
+drawMap();
 </script>
-
 </body>
 </html>
